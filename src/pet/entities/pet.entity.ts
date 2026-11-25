@@ -10,7 +10,7 @@ export class Pet {
     @Column({
         type: 'enum',
         enum: ['GATO', 'PERRO'],
-        default: 'GATO',
+        default: 'PERRO',
       })
     type: string;
 

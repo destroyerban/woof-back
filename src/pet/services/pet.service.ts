@@ -99,7 +99,7 @@ export class PetService {
 
     async createPetForUser(user: User) {
         const pet = this.petRepo.create({
-            type: 'GATO',
+            type: 'PERRO',
             state: 'HAMBRIENTO',
             date_creation: new Date(),
             user: user, 
