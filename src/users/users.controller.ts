@@ -1,0 +1,56 @@
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Res, UseGuards } from "@nestjs/common";
+import type { Response } from "express";
+import { UsersService } from "./users.service";
+import { CreateUserDto } from "./DTO/create-user.dto";
+import { LoginUserDto } from "./DTO/login-user.dto";
+import { UpdateUserDto } from "./DTO/update-user.dto";
+import { UserProgressResponseDTO } from "./DTO/user-progress-response.dto";
+import {UserId} from "../common/decorator/user-id.decorator";
+import { JwtAuthGuard } from "src/auth/jwt-auth.guard";
+import { ProyectRoleGuard } from "src/common/guards/proyect-role.guard";
+
+
+@Controller('/users')
+@UseGuards(JwtAuthGuard, ProyectRoleGuard)
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Get('/progress')
+  async getUserProgress(@UserId() userId:number, @Query('state')state: string): Promise<UserProgressResponseDTO> {
+    const stateName = state?.toUpperCase() || 'DONE';
+    return this.usersService.getUserProgress(userId, stateName);
+  }
+
+  @Post('/register')
+  async register(@Body() dto: CreateUserDto) {
+   return  await this.usersService.register(dto);
+  }
+
+  @Post('/login')
+  async login(@Body() dto: LoginUserDto, @Res() res: Response) {
+    const { token, user} = await this.usersService.login(dto);
+    res.setHeader("Authorization", `Bearer ${token}`);
+    res.setHeader("Access-control-Expose-Headers", "Authorization");
+    return res.json({message: "Inicio de sesión exitoso"});
+  }
+
+  @Get('/:id')
+  async getUser(@Param('id') id: number) {
+    const user = await this.usersService.findOne(id);
+    return { user };
+  }
+
+  @Put('/:id')
+  async updateUser(@Param('id') id: number, @Body() dto: UpdateUserDto) {
+    const updated = await this.usersService.update(id, dto);
+    return { message: 'Usuario actualizado', updated };
+  }
+
+  @Delete('/:id')
+  async deleteUser(@Param('id') id: number) {
+    await this.usersService.delete(id);
+    return { message: 'Usuario eliminado correctamente' };
+  }
+
+
+}
