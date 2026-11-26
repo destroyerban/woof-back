@@ -92,7 +92,7 @@ export class TaskHistoryService {
           .leftJoin('userProyect.user', 'userUserProyect')
           .leftJoin('history.newState', 'newState')
           .where('newState.name = :done', { done: 'DONE' })
-          .where('history.changedAt BETWEEN :start AND :end', { start, end })
+          .andWhere('history.changedAt BETWEEN :start AND :end', { start, end })
           .andWhere('(user.id = :userId OR userUserProyect.id = :userId)', { userId });
 
           const count = await queryBuilder.getCount();
