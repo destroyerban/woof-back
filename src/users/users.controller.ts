@@ -27,11 +27,11 @@ export class UsersController {
   }
 
   @Post('/login')
-  async login(@Body() dto: LoginUserDto, @Res() res: Response) {
-    const { token, user} = await this.usersService.login(dto);
+  async login(@Body() dto: LoginUserDto, @Res({ passthrough: true }) res: Response) {
+    const { token } = await this.usersService.login(dto);
     res.setHeader("Authorization", `Bearer ${token}`);
     res.setHeader("Access-control-Expose-Headers", "Authorization");
-    return res.json({message: "Inicio de sesión exitoso"});
+    return { message: "Inicio de sesión exitoso" };
   }
 
   @Get('/:id')

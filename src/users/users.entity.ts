@@ -1,4 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn, JoinColumn, OneToOne, OneToMany } from "typeorm";
+import { Exclude } from "class-transformer";
 import { Pet } from "../pet/entities/pet.entity";
 import { UserProyect } from "../user_Proyetc/userProyect.entity";
 import { TaskPersonal } from "../task/Entities/task-personal.entity";
@@ -17,6 +18,8 @@ export class User {
     @Column()
     nameComlpete: string;
 
+    // Nunca se envía en las respuestas de la API (ver ClassSerializerInterceptor en main.ts)
+    @Exclude()
     @Column()
     password: string;
 

@@ -90,7 +90,12 @@ export class UsersService {
 
   async update(id: number, dto: UpdateUserDto) {
     const user = await this.findOne(id);
-    Object.assign(user, dto);
+    // Solo se copian los campos editables; así no se puede cambiar la
+    // contraseña (ni otros campos) enviándolos en el body.
+    const { nameComlpete, oficio, dateOfBirth, purpose } = dto;
+    Object.assign(user, Object.fromEntries(
+      Object.entries({ nameComlpete, oficio, dateOfBirth, purpose }).filter(([, v]) => v !== undefined),
+    ));
     const updated = await this.userRepository.save(user);
     return updated;
   }
