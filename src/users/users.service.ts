@@ -132,8 +132,11 @@ export class UsersService {
       .setParameter('stateName', stateName)
       .getRawOne();
 
-    const totalTasks = parseInt(personal.total) + parseInt(project.total);
-    const matchingTasks = parseInt(personal.matching) + parseInt(project.matching);
+    // SUM() devuelve NULL cuando no hay filas (por ejemplo, sin tareas de
+    // proyecto); sin esto el resultado era NaN y la API respondía null.
+    const toInt = (v: string | null | undefined) => parseInt(v ?? '0', 10) || 0;
+    const totalTasks = toInt(personal.total) + toInt(project.total);
+    const matchingTasks = toInt(personal.matching) + toInt(project.matching);
 
     const progressPercentage =
       totalTasks === 0 ? 0 : (matchingTasks / totalTasks) * 100;
