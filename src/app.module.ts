@@ -14,6 +14,7 @@ import { UserProyectModule } from './user_Proyetc/userProyect.module';
 import { TaskHistoryModule } from './task_history/task-history.module';
 import { PetModule } from './pet/pet.module';
 import { RealtimeModule } from './realtime/realtime.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { RealtimeModule } from './realtime/realtime.module';
     TaskHistoryModule,
     PetModule,
     RealtimeModule,
+    AiModule,
   ],
   providers: [
     {
