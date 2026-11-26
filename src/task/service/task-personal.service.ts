@@ -7,6 +7,7 @@ import { State } from '../../State/state.entity';
 import { CreateTaskPersonalDto } from '../DTO/taskPersonal/create-task-personal.dto';
 import { UpdateTaskPersonalDto } from '../DTO/taskPersonal/update-task-personal.dto';
 import { TaskHistoryService } from 'src/task_history/task-history.service';
+import { RealtimeGateway } from 'src/realtime/realtime.gateway';
 
 @Injectable()
 export class TaskPersonalService {
@@ -18,6 +19,7 @@ export class TaskPersonalService {
     @InjectRepository(State)
     private readonly stateRepository: Repository<State>,
     private readonly taskHistoryService: TaskHistoryService,
+    private readonly realtime: RealtimeGateway,
   ) {}
 
   async createTask(dto: CreateTaskPersonalDto) {
@@ -34,7 +36,9 @@ export class TaskPersonalService {
       state,
     });
 
-    return await this.taskRepository.save(task);
+    const saved = await this.taskRepository.save(task);
+    this.realtime.tareasPersonales(user.id);
+    return saved;
   }
 
   //  Obtener todas las tareas
@@ -75,13 +79,18 @@ export class TaskPersonalService {
       })
     }
 
-    return await this.taskRepository.save(task);
+    const saved = await this.taskRepository.save(task);
+    this.realtime.tareasPersonales(task.user.id);
+    return saved;
   }
 
   //  Eliminar tarea
   async deleteTask(id: number) {
     const task = await this.getTaskById(id);
-    return await this.taskRepository.remove(task);
+    const userId = task.user.id;
+    const removed = await this.taskRepository.remove(task);
+    this.realtime.tareasPersonales(userId);
+    return removed;
   }
 
   async getTasksByUserId(userId: number) {

@@ -1,3 +1,4 @@
+import { RealtimeGateway } from 'src/realtime/realtime.gateway';
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from "typeorm";
@@ -26,6 +27,7 @@ export class ProyectService{
         @InjectRepository(TaskProyect)
         private readonly taskProyectRepository: Repository<TaskProyect>,
         private readonly dataSource: DataSource,
+        private readonly realtime: RealtimeGateway,
     ) {}
 
     async getProyets(): Promise<ProyectResponseDTO[]> {
@@ -101,6 +103,8 @@ export class ProyectService{
             await queryRunner.manager.save(userProyect);
 
             await queryRunner.commitTransaction();
+            // El creador (MANAGER) entra al room del proyecto nuevo.
+            this.realtime.integranteAgregado(userId, savedProyect.id);
 
             return {
                 id: savedProyect.id,
@@ -145,6 +149,7 @@ async deleteProyect(id: number): Promise<{ message: string }> {
         await queryRunner.manager.delete(Proyect, { id });
 
         await queryRunner.commitTransaction();
+        this.realtime.proyectoEliminado(id);
 
         return { message: `Proyecto con ID ${id} eliminado correctamente.` };
 
@@ -174,6 +179,7 @@ async deleteProyect(id: number): Promise<{ message: string }> {
 
        
         const updatedProyect = await this.proyectRepository.save(proyect);
+        this.realtime.proyectoActualizado(id);
 
         return {
             id: updatedProyect.id,

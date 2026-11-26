@@ -1,3 +1,4 @@
+import { RealtimeGateway } from 'src/realtime/realtime.gateway';
 import {
   Injectable,
   NotFoundException,
@@ -40,6 +41,8 @@ export class UserProyectService {
     // 👇 INYECTA TaskProyect
     @InjectRepository(TaskProyect)
     private readonly taskProyectRepository: Repository<TaskProyect>,
+
+    private readonly realtime: RealtimeGateway,
   ) {}
 
   async createUserProyect(
@@ -90,6 +93,7 @@ export class UserProyectService {
       role,
     });
     const saved = await this.userProyectRepository.save(relation);
+    this.realtime.integranteAgregado(dto.userId, dto.proyectId);
 
     return new UserProyectResponseDTO(saved);
   }
@@ -217,6 +221,11 @@ export class UserProyectService {
    */
   async deleteUserProyect(id: number): Promise<{ message: string }> {
   try {
+    // Se lee antes de borrar para saber a quién y a qué proyecto avisar.
+    const relation = await this.userProyectRepository.findOne({
+      where: { id },
+      relations: ['user', 'proyect'],
+    });
     const result = await this.userProyectRepository.delete(id);
 
     if (result.affected === 0) {
@@ -225,6 +234,9 @@ export class UserProyectService {
       );
     }
 
+    if (relation) {
+      this.realtime.integranteEliminado(relation.user.id, relation.proyect.id);
+    }
     return { message: 'UserProyect eliminado correctamente.' };
 
   } catch (error) {
@@ -275,6 +287,7 @@ export class UserProyectService {
 
     relation.role = newRole;
     const updated = await this.userProyectRepository.save(relation);
+    this.realtime.proyectoActualizado(proyectId);
     return new UserProyectResponseDTO(updated);
   }
 }

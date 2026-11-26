@@ -13,6 +13,7 @@ import { AuthModule } from './auth/auth.module';
 import { UserProyectModule } from './user_Proyetc/userProyect.module';
 import { TaskHistoryModule } from './task_history/task-history.module';
 import { PetModule } from './pet/pet.module';
+import { RealtimeModule } from './realtime/realtime.module';
 
 @Module({
   imports: [
@@ -26,7 +27,8 @@ import { PetModule } from './pet/pet.module';
     RoleModule,
     AuthModule, 
     TaskHistoryModule,
-    PetModule
+    PetModule,
+    RealtimeModule,
   ],
   providers: [
     {

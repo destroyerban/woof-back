@@ -11,6 +11,7 @@ import { ListTaskProyectItemDTO } from '../DTO/taskProeyct/list-task-proyect.res
 import { DetailTaskProyectResponseDTO } from '../DTO/taskProeyct/detail-task-proyect.response.dto';
 import { UpdateTaskProyectResponseDTO } from '../DTO/taskProeyct/update-task-proyect.response.dto';
 import { TaskHistoryService } from 'src/task_history/task-history.service';
+import { RealtimeGateway } from 'src/realtime/realtime.gateway';
 
 @Injectable()
 export class TaskProyectService {
@@ -22,6 +23,7 @@ export class TaskProyectService {
     @InjectRepository(State)
     private readonly stateRepository: Repository<State>,
     private readonly taskHistoryService: TaskHistoryService,
+    private readonly realtime: RealtimeGateway,
   ) {}
 
   //Helpers de carga con relaciones
@@ -124,6 +126,7 @@ export class TaskProyectService {
     const saved = await this.taskProyectRepository.save(task);
 
     const full = await this.loadTaskWithRelationsOrFail(saved.id);
+    this.realtime.tareasDeProyecto(proyectId);
     return this.toCreateResponse(full);
   }
 
@@ -181,6 +184,7 @@ export class TaskProyectService {
 
     const saved = await this.taskProyectRepository.save(task);
     const full = await this.loadTaskWithRelationsOrFail(saved.id);
+    this.realtime.tareasDeProyecto(proyectId);
     return this.toUpdateResponse(full);
   }
 
@@ -189,6 +193,7 @@ export class TaskProyectService {
     const task = await this.loadTaskWithRelationsOrFail(taskId);
     this.ensureSameProjectOrThrow(task.userProyect, proyectId);
     await this.taskProyectRepository.remove(task);
+    this.realtime.tareasDeProyecto(proyectId);
     return { message: 'Tarea eliminada correctamente' };
   }
 }
