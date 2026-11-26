@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Post, Put, Query, Res, UseGuards } from "@nestjs/common";
 import type { Response } from "express";
 import { UsersService } from "./users.service";
 import { CreateUserDto } from "./DTO/create-user.dto";
@@ -35,22 +35,30 @@ export class UsersController {
   }
 
   @Get('/:id')
-  async getUser(@Param('id') id: number) {
+  async getUser(@Param('id', ParseIntPipe) id: number, @UserId() userId: number) {
+    this.assertSelf(id, userId);
     const user = await this.usersService.findOne(id);
     return { user };
   }
 
   @Put('/:id')
-  async updateUser(@Param('id') id: number, @Body() dto: UpdateUserDto) {
+  async updateUser(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto, @UserId() userId: number) {
+    this.assertSelf(id, userId);
     const updated = await this.usersService.update(id, dto);
     return { message: 'Usuario actualizado', updated };
   }
 
   @Delete('/:id')
-  async deleteUser(@Param('id') id: number) {
+  async deleteUser(@Param('id', ParseIntPipe) id: number, @UserId() userId: number) {
+    this.assertSelf(id, userId);
     await this.usersService.delete(id);
     return { message: 'Usuario eliminado correctamente' };
   }
 
-
+  // Un usuario solo puede ver, editar o borrar su propia cuenta.
+  private assertSelf(id: number, userId: number) {
+    if (id !== userId) {
+      throw new ForbiddenException('Solo puedes acceder a tu propia cuenta');
+    }
+  }
 }
