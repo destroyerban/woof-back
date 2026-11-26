@@ -29,10 +29,17 @@ const SCHEMA = {
 };
 
 const SYSTEM = `Eres el perrito mascota de WOOF, una app de tareas Kanban. Hablas en primera persona,
-en español, con cariño y energía de perro (puedes decir "¡Guau!" y usar emojis como 🐾 🦴 🐶).
-Te dan HECHOS sobre las tareas de tu dueño y un MENSAJE BASE.
-Reescribe el mensaje base con tu personalidad en máximo 2 frases cortas (menos de 200 caracteres).
-Usa solo los hechos dados: no inventes tareas, números ni nombres.`;
+en español correcto, con cariño y energía de perro.
+Te dan HECHOS sobre las tareas de la persona que te cuida y un MENSAJE BASE.
+Reescribe el mensaje base con tu personalidad en máximo 2 frases cortas (menos de 180 caracteres).
+Reglas:
+- Háblale de "tú". No uses palabras con género para referirte a la persona (nada de guapo/guapa,
+  amigo/amiga, campeón/campeona, chico/chica): no sabes su género.
+- Usa solo los hechos dados: no inventes tareas, números ni nombres. Si el mensaje base nombra una
+  tarea o un número, consérvalos tal cual.
+- Usa solo estos emojis: 🐾 🦴 🐶 👻 🎾 ❤️
+- Revisa la ortografía. Ejemplos bien escritos: "¡Guau! Aliméntame, por favor 🦴",
+  "Termina una tarea y dame de comer 🐾", "¡Qué bien lo estás haciendo! 🐶"`;
 
 @Injectable()
 export class PetMensajeService {
@@ -63,16 +70,18 @@ export class PetMensajeService {
           SYSTEM,
           `HECHOS: ${describirHechos(hechos)}\nMENSAJE BASE: ${base}`,
           SCHEMA,
-          { timeoutMs: 45_000, temperature: 0.8, maxTokens: 150 },
+          { timeoutMs: 45_000, temperature: 0.5, maxTokens: 150 },
         );
-        const limpio = String(mensaje ?? '').replace(/\s+/g, ' ').trim();
-        if (limpio.length >= 5 && limpio.length <= 280) {
+        const limpio = validarMensajeIA(mensaje, base, hechos);
+        if (limpio) {
           this.cache.set(userId, { clave, mensaje: limpio, hasta: Date.now() + CACHE_MS });
           return { mensaje: limpio, fuente: 'ia', estado: hechos.estado };
         }
       } catch (err: any) {
         this.logger.warn(`Mensaje del perro sin IA: ${err?.message ?? err}`);
+        return { mensaje: base, fuente: 'plantilla', estado: hechos.estado };
       }
+      this.logger.warn('El mensaje de la IA no pasó el filtro; se usa la plantilla.');
     }
     return { mensaje: base, fuente: 'plantilla', estado: hechos.estado };
   }
@@ -184,4 +193,54 @@ function describirHechos(h: PetHechos): string {
   ];
   if (h.atascada) partes.push(`tarea atascada: "${h.atascada.nombre}" lleva ${h.atascada.dias} días en DOING`);
   return partes.join('; ');
+}
+
+const EMOJIS_PERMITIDOS = new Set(['🐾', '🦴', '🐶', '🐕', '👻', '🎾', '❤', '💙', '✨']);
+
+// Palabras con género para referirse a la persona: el modelo no sabe su género.
+const CON_GENERO = /(?<!\p{L})(guap[oa]s?|lind[oa]s?|bonit[oa]s?|amig[oa]s?|chic[oa]s?|campe[oó]n|campeona|reina|rey|princes[ao]|señor(?:a|ita)?|niñ[oa]|herman[oa]|querid[oa]|precios[oa]|bell[oa]|hermos[oa]|dueña)(?!\p{L})/iu;
+
+// Errores de ortografía que el modelo pequeño ya cometió.
+const ERRORES_CONOCIDOS = /(?<!\p{L})(al[ií]mate|alimentáme|alimentáte)(?!\p{L})/iu;
+
+/**
+ * Revisa lo que escribió la IA antes de mostrárselo a la persona.
+ * Devuelve el mensaje limpio, o null si hay que usar la plantilla.
+ */
+export function validarMensajeIA(raw: unknown, base: string, h: PetHechos): string | null {
+  // Quita emojis que no son de perro (por ejemplo 🍎 o 😭) y espacios de más.
+  let m = Array.from(String(raw ?? ''))
+    .filter((c) => !/\p{Extended_Pictographic}/u.test(c) || EMOJIS_PERMITIDOS.has(c))
+    .join('')
+    .replace(/(^|[^\p{Extended_Pictographic}])[️‍]+/gu, '$1')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.!?])/g, '$1')
+    .trim();
+
+  if (m.length < 5 || m.length > 200) return null;
+  if (CON_GENERO.test(m) || ERRORES_CONOCIDOS.test(m)) return null;
+
+  // Si el mensaje base nombra una tarea, la IA debe conservarla.
+  for (const nombre of [h.atascada?.nombre, h.primeraTodo]) {
+    if (nombre && base.includes(nombre) && !m.toLowerCase().includes(nombre.toLowerCase())) return null;
+  }
+
+  // No se aceptan números inventados: solo los de los hechos.
+  const permitidos = new Set(
+    [h.hechasHoy, h.comidasHoy, h.comidaDisponible, h.pendientes.backlog, h.pendientes.todo, h.pendientes.doing, h.atascada?.dias]
+      .filter((n) => n !== undefined)
+      .map(String),
+  );
+  for (const nombre of [h.atascada?.nombre, h.primeraTodo]) {
+    for (const n of nombre?.match(/\d+/g) ?? []) permitidos.add(n);
+  }
+  for (const n of m.match(/\d+/g) ?? []) {
+    if (!permitidos.has(n)) return null;
+  }
+  // Y los números del mensaje base deben seguir ahí.
+  for (const n of base.match(/\d+/g) ?? []) {
+    if (!m.includes(n)) return null;
+  }
+
+  return m;
 }
